@@ -7,11 +7,12 @@ terraform {
     }
   }
 }
-
+#tipo de provaider a ser usado
 provider "aws" {
   region = "us-east-1"
 }
 
+#configurações da infraestrutura 
 module "imersao_vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.1.1"
@@ -26,6 +27,7 @@ module "imersao_vpc" {
   single_nat_gateway   = true
   enable_dns_hostnames = true
 
+#tags para cluster
   tags = {
     "kubernetes.io/cluster/imersao-eks" = "shared"
   }
@@ -40,7 +42,7 @@ module "imersao_vpc" {
   }
 
 }
-
+#configurações  na aws
 module "imersao_eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "19.16.0"
