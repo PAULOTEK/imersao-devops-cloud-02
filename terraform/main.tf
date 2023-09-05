@@ -1,3 +1,4 @@
+#inicio do terraForm e suas configurações 
 terraform {
   required_providers {
     aws = {
