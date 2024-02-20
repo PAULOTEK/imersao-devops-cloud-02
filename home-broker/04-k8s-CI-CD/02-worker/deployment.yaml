@@ -1,0 +1,24 @@
+# Definição do Deployment para o componente "trader"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trader  # Nome do Deployment
+spec:
+  selector:
+    matchLabels:
+      app: trader  # Seletor de labels para os pods
+  template:
+    metadata:
+      labels:
+        app: trader  # Labels para os pods
+    spec:
+      containers:
+        - name: trader  # Nome do container
+          image: pauloale/trader-worker:v1  # Imagem Docker utilizada
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-service:9092"  # Endereço do servidor Kafka
+            - name: KAFKA_GROUP_ID
+              value: "myGroup"  # Identificador do grupo Kafka
+            - name: KAFKA_AUTO_OFFSET_RESET
+              value: "earliest"  # Configuração de leitura de offset no Kafka

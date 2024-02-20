@@ -1,0 +1,682 @@
+
+#       Instalação do Prometheus       #
+#                                      #
+
+# Definição de ServiceAccount para o kube-state-metrics do Prometheus
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    # Labels adicionais para identificação do recurso
+    helm.sh/chart: kube-state-metrics-4.13.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: kube-state-metrics
+    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/instance: prometheus
+    app.kubernetes.io/version: "2.5.0"
+  name: prometheus-kube-state-metrics  # Nome do ServiceAccount
+  namespace: default  # Namespace onde o ServiceAccount será criado
+imagePullSecrets:
+  []  # Lista de segredos para autenticação no registro de contêiner (vazia neste caso)
+
+---
+# Definição de ServiceAccount para o node-exporter do Prometheus
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    component: "node-exporter"  # Label identificando o componente como "node-exporter"
+    app: prometheus  # Label indicando a aplicação como "prometheus"
+    release: prometheus  # Label indicando o nome do release como "prometheus"
+    chart: prometheus-15.16.1  # Label indicando a versão do chart do Helm
+    heritage: Helm  # Label indicando que o recurso foi gerado pelo Helm
+  name: prometheus-node-exporter  # Nome do ServiceAccount
+  namespace: default  # Namespace onde o ServiceAccount será criado
+  annotations:
+    {}  # Anotações adicionais (nenhuma neste caso)
+
+---
+# Definição de ServiceAccount para o servidor Prometheus
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    component: "server"  # Label identificando o componente como "server"
+    app: prometheus  # Label indicando a aplicação como "prometheus"
+    release: prometheus  # Label indicando o nome do release como "prometheus"
+    chart: prometheus-15.16.1  # Label indicando a versão do chart do Helm
+    heritage: Helm  # Label indicando que o recurso foi gerado pelo Helm
+  name: prometheus-server  # Nome do ServiceAccount
+  namespace: default  # Namespace onde o ServiceAccount será criado
+  annotations:
+    {}  # Anotações adicionais (nenhuma neste caso)
+
+---
+# Definição de ConfigMap para configurações do servidor Prometheus
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    component: "server"  # Label identificando o componente como "server"
+    app: prometheus  # Label indicando a aplicação como "prometheus"
+    release: prometheus  # Label indicando o nome do release como "prometheus"
+    chart: prometheus-15.16.1  # Label indicando a versão do chart do Helm
+    heritage: Helm  # Label indicando que o recurso foi gerado pelo Helm
+  name: prometheus-server  # Nome do ConfigMap
+  namespace: default  # Namespace onde o ConfigMap será criado
+  annotations:
+    {}  # Anotações adicionais (nenhuma neste caso)
+data:
+  allow-snippet-annotations: "false"  # Configuração para permitir ou não anotações de snippet
+  alerting_rules.yml: |
+    {}  # Regras de alerta (vazias neste caso)
+  alerts: |
+    {}  # Definição de alertas (vazia neste caso)
+  prometheus.yml: |
+    global:
+      evaluation_interval: 1m
+      scrape_interval: 10s
+      scrape_timeout: 10s
+    rule_files:
+      - /etc/config/recording_rules.yml
+      - /etc/config/alerting_rules.yml
+      - /etc/config/rules
+      - /etc/config/alerts
+    # Configurações de scraping para diferentes jobs (Kubernetes, Prometheus, etc.)
+    # ... (configurações específicas para diferentes jobs)
+  recording_rules.yml: |
+    {}  # Regras de gravação (vazias neste caso)
+  rules: |
+    {}  # Regras de Prometheus (vazias neste caso)
+
+---
+# Definição de ClusterRole para as permissões necessárias ao kube-state-metrics do Prometheus
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    helm.sh/chart: kube-state-metrics-4.13.0  # Label indicando a versão do chart do Helm
+    app.kubernetes.io/managed-by: Helm  # Label indicando que o recurso é gerenciado pelo Helm
+    app.kubernetes.io/component: metrics  # Label indicando o componente como "metrics"
+    app.kubernetes.io/part-of: kube-state-metrics  # Label indicando que faz parte do kube-state-metrics
+    app.kubernetes.io/name: kube-state-metrics  # Label indicando o nome como "kube-state-metrics"
+    app.kubernetes.io/instance: prometheus  # Label indicando a instância como "prometheus"
+    app.kubernetes.io/version: "2.5.0"  # Label indicando a versão do aplicativo
+  name: prometheus-kube-state-metrics  # Nome do ClusterRole
+rules:
+  # Regras de permissão específicas para diferentes recursos no Kubernetes
+  # Permite listar e observar solicitações de assinatura de certificados pendentes.
+- apiGroups: ["certificates.k8s.io"]
+  resources:
+  - certificatesigningrequests
+  verbs: ["list", "watch"]
+
+  # ConfigMaps
+- apiGroups: [""]
+  resources:
+    - configmaps
+  verbs: ["list", "watch"]
+  # Permite listar e observar ConfigMaps no cluster.
+
+  # CronJobs
+- apiGroups: ["batch"]
+  resources:
+    - cronjobs
+  verbs: ["list", "watch"]
+  # Permite listar e observar CronJobs no cluster.
+
+  # DaemonSets
+- apiGroups: ["extensions", "apps"]
+  resources:
+    - daemonsets
+  verbs: ["list", "watch"]
+  # Permite listar e observar DaemonSets no cluster.
+
+  # Deployments
+- apiGroups: ["extensions", "apps"]
+  resources:
+    - deployments
+  verbs: ["list", "watch"]
+  # Permite listar e observar Deployments no cluster.
+
+  # Endpoints
+- apiGroups: [""]
+  resources:
+    - endpoints
+  verbs: ["list", "watch"]
+  # Permite listar e observar Endpoints no cluster.
+
+  # Horizontal Pod Autoscalers
+- apiGroups: ["autoscaling"]
+  resources:
+    - horizontalpodautoscalers
+  verbs: ["list", "watch"]
+  # Permite listar e observar Horizontal Pod Autoscalers no cluster.
+
+  # Ingresses
+- apiGroups: ["extensions", "networking.k8s.io"]
+  resources:
+    - ingresses
+  verbs: ["list", "watch"]
+  # Permite listar e observar Ingresses no cluster.
+
+  # Jobs
+- apiGroups: ["batch"]
+  resources:
+    - jobs
+  verbs: ["list", "watch"]
+  # Permite listar e observar Jobs no cluster.
+
+  # Limit Ranges
+- apiGroups: [""]
+  resources:
+    - limitranges
+  verbs: ["list", "watch"]
+  # Permite listar e observar Limit Ranges no cluster.
+
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources:
+    - mutatingwebhookconfigurations
+  verbs: ["list", "watch"]
+
+- apiGroups: [""]
+  resources:
+  - namespaces
+  verbs: ["list", "watch"]
+
+- apiGroups: ["networking.k8s.io"]
+  resources:
+  - networkpolicies
+  verbs: ["list", "watch"]
+
+- apiGroups: [""]
+  resources:
+  - nodes
+  verbs: ["list", "watch"]
+
+- apiGroups: [""]
+  resources:
+  - persistentvolumeclaims
+  verbs: ["list", "watch"]
+
+- apiGroups: [""]
+  resources:
+  - persistentvolumes
+  verbs: ["list", "watch"]
+
+- apiGroups: ["policy"]
+  resources:
+    - poddisruptionbudgets
+  verbs: ["list", "watch"]
+
+- apiGroups: [""]
+  resources:
+  - pods
+  verbs: ["list", "watch"]
+
+- apiGroups: ["extensions", "apps"]
+  resources:
+  - replicasets
+  verbs: ["list", "watch"]
+
+- apiGroups: [""]
+  resources:
+  - replicationcontrollers
+  verbs: ["list", "watch"]
+
+- apiGroups: [""]
+  resources:
+  - resourcequotas
+  verbs: ["list", "watch"]
+
+- apiGroups: [""]
+  resources:
+  - secrets
+  verbs: ["list", "watch"]
+
+- apiGroups: [""]
+  resources:
+  - services
+  verbs: ["list", "watch"]
+
+- apiGroups: ["apps"]
+  resources:
+  - statefulsets
+  verbs: ["list", "watch"]
+
+- apiGroups: ["storage.k8s.io"]
+  resources:
+    - storageclasses
+  verbs: ["list", "watch"]
+
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources:
+    - validatingwebhookconfigurations
+  verbs: ["list", "watch"]
+
+- apiGroups: ["storage.k8s.io"]
+  resources:
+    - volumeattachments
+  verbs: ["list", "watch"]
+---
+# Definição de ClusterRole para permissões específicas do Prometheus Server
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    component: "server"
+    app: prometheus
+    release: prometheus
+    chart: prometheus-15.16.1
+    heritage: Helm
+  name: prometheus-server
+  # Rótulos (labels) para identificar e associar o ClusterRole ao Prometheus
+rules:
+  # Regras de permissão específicas para diferentes recursos e ações no Kubernetes
+
+  # Recursos relacionados a nodes, serviços, endpoints, pods, ingresses e configmaps
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - nodes/proxy
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+      - ingresses
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+    # Permite as ações de get, list e watch nos recursos especificados.
+
+  # Recursos específicos de extensões e networking.k8s.io relacionados a ingresses
+  - apiGroups:
+      - "extensions"
+      - "networking.k8s.io"
+    resources:
+      - ingresses/status
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+    # Permite as ações de get, list e watch nos recursos de ingresses e seus status.
+
+  # URLs não relacionadas a recursos, permitindo o acesso a /metrics
+  - nonResourceURLs:
+      - "/metrics"
+    verbs:
+      - get
+    # Permite a ação de get na URL /metrics, que é usada para obter métricas do Prometheus.
+
+---
+# Definição de ClusterRoleBinding para vincular um ClusterRole a um ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    helm.sh/chart: kube-state-metrics-4.13.0  # Label indicando a versão do chart do Helm
+    app.kubernetes.io/managed-by: Helm  # Label indicando que o recurso é gerenciado pelo Helm
+    app.kubernetes.io/component: metrics  # Label indicando o componente como "metrics"
+    app.kubernetes.io/part-of: kube-state-metrics  # Label indicando que faz parte do kube-state-metrics
+    app.kubernetes.io/name: kube-state-metrics  # Label indicando o nome como "kube-state-metrics"
+    app.kubernetes.io/instance: prometheus  # Label indicando a instância como "prometheus"
+    app.kubernetes.io/version: "2.5.0"  # Label indicando a versão do aplicativo
+  name: prometheus-kube-state-metrics  # Nome do ClusterRoleBinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-kube-state-metrics
+  # Referência ao ClusterRole (prometheus-kube-state-metrics) que será vinculado
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-kube-state-metrics
+    namespace: default
+    # ServiceAccount (prometheus-kube-state-metrics) no namespace padrão que receberá as permissões
+
+---
+# Definição de ClusterRoleBinding para vincular um ClusterRole a um ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    component: "server"  # Rótulo indicando o componente como "server"
+    app: prometheus  # Rótulo indicando o aplicativo como "prometheus"
+    release: prometheus  # Rótulo indicando a versão do release como "prometheus"
+    chart: prometheus-15.16.1  # Rótulo indicando a versão do chart do Helm
+    heritage: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+  name: prometheus-server  # Nome do ClusterRoleBinding
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-server
+    namespace: default
+    # ServiceAccount (prometheus-server) no namespace padrão que receberá as permissões
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-server
+  # Referência ao ClusterRole (prometheus-server) que será vinculado
+
+---
+# Definição de Service para kube-state-metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-kube-state-metrics  # Nome do serviço
+  namespace: default  # Namespace padrão para o serviço
+  labels:
+    helm.sh/chart: kube-state-metrics-4.13.0  # Rótulo indicando a versão do chart do Helm
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+    app.kubernetes.io/component: metrics  # Rótulo indicando o componente como "metrics"
+    app.kubernetes.io/part-of: kube-state-metrics  # Rótulo indicando que faz parte do kube-state-metrics
+    app.kubernetes.io/name: kube-state-metrics  # Rótulo indicando o nome como "kube-state-metrics"
+    app.kubernetes.io/instance: prometheus  # Rótulo indicando a instância como "prometheus"
+    app.kubernetes.io/version: "2.5.0"  # Rótulo indicando a versão do aplicativo
+  annotations:
+    prometheus.io/scrape: 'true'  # Anotação indicando que o Prometheus deve coletar métricas deste serviço
+spec:
+  type: "ClusterIP"  # Tipo de serviço, ClusterIP neste caso
+  ports:
+    - name: "http"  # Nome da porta
+      protocol: TCP  # Protocolo da porta
+      port: 8080  # Número da porta do serviço
+      targetPort: 8080  # Porta alvo para redirecionamento
+  selector:
+    app.kubernetes.io/name: kube-state-metrics  # Seletor de rótulo para direcionar o serviço aos pods corretos
+    app.kubernetes.io/instance: prometheus  # Seletor de rótulo para direcionar o serviço aos pods corretos
+
+---
+# Definição de Service para node-exporter
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/scrape: "true"  # Anotação indicando que o Prometheus deve coletar métricas deste serviço
+  labels:
+    component: "node-exporter"  # Rótulo indicando o componente como "node-exporter"
+    app: prometheus  # Rótulo indicando o aplicativo como "prometheus"
+    release: prometheus  # Rótulo indicando a versão do release como "prometheus"
+    chart: prometheus-15.16.1  # Rótulo indicando a versão do chart do Helm
+    heritage: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+  name: prometheus-node-exporter  # Nome do serviço
+  namespace: default  # Namespace padrão para o serviço
+spec:
+  ports:
+    - name: metrics  # Nome da porta
+      port: 9100  # Número da porta do serviço
+      protocol: TCP  # Protocolo da porta
+      targetPort: 9100  # Porta alvo para redirecionamento
+  selector:
+    component: "node-exporter"  # Seletor de rótulo para direcionar o serviço aos pods corretos
+    app: prometheus  # Seletor de rótulo para direcionar o serviço aos pods corretos
+    release: prometheus  # Seletor de rótulo para direcionar o serviço aos pods corretos
+  type: "ClusterIP"  # Tipo de serviço, ClusterIP neste caso
+
+---
+# Definição de Service para o servidor Prometheus
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: "server"  # Rótulo indicando o componente como "server"
+    app: prometheus  # Rótulo indicando o aplicativo como "prometheus"
+    release: prometheus  # Rótulo indicando a versão do release como "prometheus"
+    chart: prometheus-15.16.1  # Rótulo indicando a versão do chart do Helm
+    heritage: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+  name: prometheus-server  # Nome do serviço
+  namespace: default  # Namespace padrão para o serviço
+spec:
+  ports:
+    - name: http  # Nome da porta
+      port: 80  # Número da porta do serviço
+      protocol: TCP  # Protocolo da porta
+      targetPort: 9090  # Porta alvo para redirecionamento
+  selector:
+    component: "server"  # Seletor de rótulo para direcionar o serviço aos pods corretos
+    app: prometheus  # Seletor de rótulo para direcionar o serviço aos pods corretos
+    release: prometheus  # Seletor de rótulo para direcionar o serviço aos pods corretos
+  sessionAffinity: None  # Afinidade de sessão configurada como None (nenhuma)
+  type: "LoadBalancer"  # Tipo de serviço, LoadBalancer neste caso
+
+---
+# Definição de DaemonSet para o node-exporter
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    component: "node-exporter"  # Rótulo indicando o componente como "node-exporter"
+    app: prometheus  # Rótulo indicando o aplicativo como "prometheus"
+    release: prometheus  # Rótulo indicando a versão do release como "prometheus"
+    chart: prometheus-15.16.1  # Rótulo indicando a versão do chart do Helm
+    heritage: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+  name: prometheus-node-exporter  # Nome do DaemonSet
+  namespace: default  # Namespace padrão para o DaemonSet
+spec:
+  selector:
+    matchLabels:
+      component: "node-exporter"  # Seletor de rótulo para direcionar o DaemonSet aos pods corretos
+      app: prometheus  # Seletor de rótulo para direcionar o DaemonSet aos pods corretos
+      release: prometheus  # Seletor de rótulo para direcionar o DaemonSet aos pods corretos
+  updateStrategy:
+    type: RollingUpdate  # Estratégia de atualização configurada como RollingUpdate
+  template:
+    metadata:
+      labels:
+        component: "node-exporter"  # Rótulo indicando o componente como "node-exporter"
+        app: prometheus  # Rótulo indicando o aplicativo como "prometheus"
+        release: prometheus  # Rótulo indicando a versão do release como "prometheus"
+        chart: prometheus-15.16.1  # Rótulo indicando a versão do chart do Helm
+        heritage: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+    spec:
+      serviceAccountName: prometheus-node-exporter  # Nome da conta de serviço associada aos pods
+      containers:
+        - name: prometheus-node-exporter  # Nome do contêiner
+          image: "quay.io/prometheus/node-exporter:v1.3.1"  # Imagem do contêiner
+          imagePullPolicy: "IfNotPresent"  # Política de puxar a imagem se não estiver presente localmente
+          args:
+            - --path.procfs=/host/proc  # Argumento indicando o caminho para /proc no host
+            - --path.sysfs=/host/sys  # Argumento indicando o caminho para /sys no host
+            - --path.rootfs=/host/root  # Argumento indicando o caminho para /root no host
+            - --web.listen-address=:9100  # Argumento indicando o endereço e porta para a exposição das métricas
+          ports:
+            - name: metrics  # Nome da porta
+              containerPort: 9100  # Porta do contêiner
+              hostPort: 9100  # Porta no host
+          resources: {}  # Recursos do contêiner (CPU, memória, etc.)
+          securityContext:
+            allowPrivilegeEscalation: false  # Impede a escalada de privilégios no contêiner
+          volumeMounts:
+            - name: proc  # Nome do volume
+              mountPath: /host/proc  # Caminho de montagem no contêiner
+              readOnly: true  # Volume montado como somente leitura
+            - name: sys  # Nome do volume
+              mountPath: /host/sys  # Caminho de montagem no contêiner
+              readOnly: true  # Volume montado como somente leitura
+            - name: root  # Nome do volume
+              mountPath: /host/root  # Caminho de montagem no contêiner
+              mountPropagation: HostToContainer  # Propagação do volume do host para o contêiner
+              readOnly: true  # Volume montado como somente leitura
+      hostNetwork: true  # Habilita o uso da rede do host pelos pods
+      hostPID: true  # Habilita o uso do PID do host pelos pods
+      securityContext:
+        fsGroup: 65534  # GID (ID do grupo) para o contêiner
+        runAsGroup: 65534  # GID (ID do grupo) para o processo iniciado pelo contêiner
+        runAsNonRoot: true  # Garante que o processo seja executado como não-root
+        runAsUser: 65534  # UID (ID do usuário) para o contêiner
+      volumes:
+        - name: proc  # Nome do volume
+          hostPath:
+            path: /proc  # Caminho do volume no host
+        - name: sys  # Nome do volume
+          hostPath:
+            path: /sys  # Caminho do volume no host
+        - name: root  # Nome do volume
+          hostPath:
+            path: /  # Caminho do volume no host
+
+---
+# Definição do Deployment para kube-state-metrics
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-kube-state-metrics  # Nome do Deployment
+  namespace: default  # Namespace padrão para o Deployment
+  labels:
+    helm.sh/chart: kube-state-metrics-4.13.0  # Rótulo indicando a versão do chart do Helm
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+    app.kubernetes.io/component: metrics  # Rótulo indicando o componente como "metrics"
+    app.kubernetes.io/part-of: kube-state-metrics  # Rótulo indicando a parte do sistema como "kube-state-metrics"
+    app.kubernetes.io/name: kube-state-metrics  # Rótulo indicando o nome do aplicativo como "kube-state-metrics"
+    app.kubernetes.io/instance: prometheus  # Rótulo indicando a instância do aplicativo como "prometheus"
+    app.kubernetes.io/version: "2.5.0"  # Rótulo indicando a versão do aplicativo como "2.5.0"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics  # Seletor de rótulo para direcionar o Deployment aos pods corretos
+      app.kubernetes.io/instance: prometheus  # Seletor de rótulo para direcionar o Deployment aos pods corretos
+  replicas: 1  # Número de réplicas desejadas
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: kube-state-metrics-4.13.0  # Rótulo indicando a versão do chart do Helm
+        app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+        app.kubernetes.io/component: metrics  # Rótulo indicando o componente como "metrics"
+        app.kubernetes.io/part-of: kube-state-metrics  # Rótulo indicando a parte do sistema como "kube-state-metrics"
+        app.kubernetes.io/name: kube-state-metrics  # Rótulo indicando o nome do aplicativo como "kube-state-metrics"
+        app.kubernetes.io/instance: prometheus  # Rótulo indicando a instância do aplicativo como "prometheus"
+        app.kubernetes.io/version: "2.5.0"  # Rótulo indicando a versão do aplicativo como "2.5.0"
+    spec:
+      hostNetwork: false  # Desabilita o uso da rede do host pelos pods
+      serviceAccountName: prometheus-kube-state-metrics  # Nome da conta de serviço associada aos pods
+      securityContext:
+        fsGroup: 65534  # GID (ID do grupo) para o contêiner
+        runAsGroup: 65534  # GID (ID do grupo) para o processo iniciado pelo contêiner
+        runAsUser: 65534  # UID (ID do usuário) para o contêiner
+      containers:
+        - name: kube-state-metrics  # Nome do contêiner
+          args:
+            - --port=8080  # Argumento indicando a porta para o serviço HTTP
+            - --resources=certificatesigningrequests,configmaps,cronjobs,daemonsets,deployments,endpoints,horizontalpodautoscalers,ingresses,jobs,limitranges,mutatingwebhookconfigurations,namespaces,networkpolicies,nodes,persistentvolumeclaims,persistentvolumes,poddisruptionbudgets,pods,replicasets,replicationcontrollers,resourcequotas,secrets,services,statefulsets,storageclasses,validatingwebhookconfigurations,volumeattachments
+            # Argumento indicando os recursos a serem coletados pelo kube-state-metrics
+            - --telemetry-port=8081  # Argumento indicando a porta para o serviço de telemetria
+          imagePullPolicy: IfNotPresent  # Política de puxar a imagem se não estiver presente localmente
+          image: "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.5.0"  # Imagem do contêiner
+          ports:
+            - containerPort: 8080  # Porta do contêiner para o serviço HTTP
+              name: "http"  # Nome da porta
+          livenessProbe:
+            httpGet:
+              path: /healthz  # Caminho para a sonda de verificação de integridade
+              port: 8080  # Porta para a sonda de verificação de integridade
+            initialDelaySeconds: 5  # Atraso inicial antes da execução da sonda de verificação de integridade
+            timeoutSeconds: 5  # Tempo limite para a sonda de verificação de integridade
+          readinessProbe:
+            httpGet:
+              path: /  # Caminho para a sonda de verificação de prontidão
+              port: 8080  # Porta para a sonda de verificação de prontidão
+            initialDelaySeconds: 5  # Atraso inicial antes da execução da sonda de verificação de prontidão
+            timeoutSeconds: 5  # Tempo limite para a sonda de verificação de prontidão
+
+---
+# Definição do Deployment para o servidor Prometheus
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: "server"  # Rótulo indicando o componente como "server"
+    app: prometheus  # Rótulo indicando o aplicativo como "prometheus"
+    release: prometheus  # Rótulo indicando a versão do release como "prometheus"
+    chart: prometheus-15.16.1  # Rótulo indicando a versão do chart do Helm
+    heritage: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+  name: prometheus-server  # Nome do Deployment
+  namespace: default  # Namespace padrão para o Deployment
+spec:
+  selector:
+    matchLabels:
+      component: "server"  # Seletor de rótulo para direcionar o Deployment aos pods corretos
+      app: prometheus  # Seletor de rótulo para direcionar o Deployment aos pods corretos
+      release: prometheus  # Seletor de rótulo para direcionar o Deployment aos pods corretos
+  replicas: 1  # Número de réplicas desejadas
+  template:
+    metadata:
+      labels:
+        component: "server"  # Rótulo indicando o componente como "server"
+        app: prometheus  # Rótulo indicando o aplicativo como "prometheus"
+        release: prometheus  # Rótulo indicando a versão do release como "prometheus"
+        chart: prometheus-15.16.1  # Rótulo indicando a versão do chart do Helm
+        heritage: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+    spec:
+      enableServiceLinks: true  # Habilita os links de serviço para comunicação entre pods
+      serviceAccountName: prometheus-server  # Nome da conta de serviço associada aos pods
+      containers:
+        - name: prometheus-server-configmap-reload  # Nome do contêiner
+          image: "jimmidyson/configmap-reload:v0.5.0"  # Imagem do contêiner
+          imagePullPolicy: "IfNotPresent"  # Política de puxar a imagem se não estiver presente localmente
+          securityContext: {}  # Contexto de segurança do contêiner
+          args:
+            - --volume-dir=/etc/config  # Argumento indicando o diretório do volume
+            - --webhook-url=http://127.0.0.1:9090/-/reload  # Argumento indicando a URL do webhook para recarregar a configuração
+          resources: {}  # Recursos alocados para o contêiner
+          volumeMounts:
+            - name: config-volume  # Nome do volume
+              mountPath: /etc/config  # Caminho de montagem do volume
+              readOnly: true  # Volume montado como somente leitura
+
+        - name: prometheus-server  # Nome do contêiner
+          image: "quay.io/prometheus/prometheus:v2.39.1"  # Imagem do contêiner
+          imagePullPolicy: "IfNotPresent"  # Política de puxar a imagem se não estiver presente localmente
+          args:
+            - --storage.tsdb.retention.time=15d  # Argumento indicando o tempo de retenção para o TSDB
+            - --config.file=/etc/config/prometheus.yml  # Argumento indicando o arquivo de configuração
+            - --storage.tsdb.path=/data  # Argumento indicando o caminho para o TSDB
+            - --web.console.libraries=/etc/prometheus/console_libraries  # Argumento indicando as bibliotecas da interface web
+            - --web.console.templates=/etc/prometheus/consoles  # Argumento indicando os modelos da interface web
+            - --web.enable-lifecycle  # Argumento indicando a habilitação do ciclo de vida da interface web
+          ports:
+            - containerPort: 9090  # Porta do contêiner para o serviço Prometheus
+          readinessProbe:
+            httpGet:
+              path: /-/ready  # Caminho para a sonda de verificação de prontidão
+              port: 9090  # Porta para a sonda de verificação de prontidão
+              scheme: HTTP  # Esquema para a sonda de verificação de prontidão
+            initialDelaySeconds: 30  # Atraso inicial antes da execução da sonda de verificação de prontidão
+            periodSeconds: 5  # Intervalo entre verificações de prontidão
+            timeoutSeconds: 4  # Tempo limite para a sonda de verificação de prontidão
+            failureThreshold: 3  # Contagem de falhas antes de considerar o pod como não pronto
+            successThreshold: 1  # Contagem de sucessos antes de considerar o pod como pronto
+          livenessProbe:
+            httpGet:
+              path: /-/healthy  # Caminho para a sonda de verificação de integridade
+              port: 9090  # Porta para a sonda de verificação de integridade
+              scheme: HTTP  # Esquema para a sonda de verificação de integridade
+            initialDelaySeconds: 30  # Atraso inicial antes da execução da sonda de verificação de integridade
+            periodSeconds: 15  # Intervalo entre verificações de integridade
+            timeoutSeconds: 10  # Tempo limite para a sonda de verificação de integridade
+            failureThreshold: 3  # Contagem de falhas antes de considerar o pod como morto
+            successThreshold: 1  # Contagem de sucessos antes de considerar o pod como vivo
+          resources: {}  # Recursos alocados para o contêiner
+          volumeMounts:
+            - name: config-volume  # Nome do volume
+              mountPath: /etc/config  # Caminho de montagem do volume
+            - name: storage-volume  # Nome do volume
+              mountPath: /data  # Caminho de montagem do volume
+              subPath: ""  # Subcaminho dentro do volume
+
+      dnsPolicy: ClusterFirst  # Política de DNS para os pods
+      securityContext:  # Contexto de segurança para o pod
+        fsGroup: 65534  # GID (ID do grupo) para o pod
+        runAsGroup: 65534  # GID (ID do grupo) para o processo iniciado pelo pod
+        runAsNonRoot: true  # O processo é executado como não-root
+        runAsUser: 65534  # UID (ID do usuário) para o pod
+      terminationGracePeriodSeconds: 300  # Período de graça para a terminação do pod
+
+      volumes:
+        - name: config-volume  # Nome do volume
+          configMap:
+            name: prometheus-server  # Nome do ConfigMap associado ao volume
+        - name: storage-volume  # Nome do volume
+          emptyDir: {}  # Volume vazio, compartilhado entre os pods

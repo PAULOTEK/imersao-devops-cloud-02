@@ -1,0 +1,38 @@
+# Definição do Deployment para o componente "web"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web  # Nome do Deployment
+spec:
+  replicas: 1  # Número de réplicas desejadas
+  selector:
+    matchLabels:
+      app: web  # Seletor de labels para os pods
+  template:
+    metadata:
+      labels:
+        app: web  # Labels para os pods
+    spec:
+      containers:
+        - name: web  # Nome do container
+          image: pauloale/trader-web:v2  # Imagem Docker utilizada
+          ports:
+            - containerPort: 3000  # Porta exposta pelo container
+          env:
+            - name: TRADER_API_URL
+              value: "api:80"  # URL da API que o aplicativo web irá acessar
+
+---
+# Definição do Service para o componente "web"
+apiVersion: v1
+kind: Service
+metadata:
+  name: web  # Nome do Service
+spec:
+  selector:
+    app: web  # Seletor de labels para selecionar os pods
+  ports:
+    - port: 80  # Porta exposta pelo Service
+      targetPort: 3000  # Porta dos pods de destino
+  type: LoadBalancer  # Tipo do Service (LoadBalancer para exposição externa)
+  #type: NodePort  # Tipo do Service (NodePort para exposição através de porta no nó)

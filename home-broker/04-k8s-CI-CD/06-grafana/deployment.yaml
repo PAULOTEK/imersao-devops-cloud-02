@@ -1,0 +1,380 @@
+
+#       Instalação do Grafana          #
+#                                      #
+
+# Definição da ServiceAccount para Grafana
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+  name: grafana-test  # Nome da ServiceAccount
+  namespace: default  # Namespace padrão para a ServiceAccount
+  annotations:
+    "helm.sh/hook": test-success  # Anotação indicando o sucesso do teste associado ao hook Helm
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"  # Política de exclusão do hook Helm
+---
+# Definição do ConfigMap para Grafana
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-test  # Nome do ConfigMap
+  namespace: default  # Namespace padrão para o ConfigMap
+  annotations:
+    "helm.sh/hook": test-success  # Anotação indicando o sucesso do teste associado ao hook Helm
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"  # Política de exclusão do hook Helm
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+data:
+  run.sh: |-  # Dados do ConfigMap - script bash para teste
+    @test "Test Health" {
+      url="http://grafana/api/health"
+
+      code=$(wget --server-response --spider --timeout 90 --tries 10 ${url} 2>&1 | awk '/^  HTTP/{print $2}')
+      [ "$code" == "200" ]
+    }
+
+---
+# Definição do Role para Grafana
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: grafana-test  # Nome do Role
+  namespace: default  # Namespace padrão para o Role
+  annotations:
+    "helm.sh/hook": test-success  # Anotação indicando o sucesso do teste associado ao hook Helm
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"  # Política de exclusão do hook Helm
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+rules:
+  - apiGroups:      ['policy']  # Grupo da API para o qual as regras se aplicam
+    resources:      ['podsecuritypolicies']  # Recurso específico ao qual as regras se aplicam
+    verbs:          ['use']  # Ação permitida (verbo) para o recurso
+    resourceNames:  [grafana-test]  # Nome específico do recurso ao qual as regras se aplicam
+
+---
+# Definição do RoleBinding para Grafana
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: grafana-test  # Nome do RoleBinding
+  namespace: default  # Namespace padrão para o RoleBinding
+  annotations:
+    "helm.sh/hook": test-success  # Anotação indicando o sucesso do teste associado ao hook Helm
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"  # Política de exclusão do hook Helm
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io  # Grupo de API do recurso Role ao qual este RoleBinding está vinculado
+  kind: Role  # Tipo do recurso ao qual este RoleBinding está vinculado
+  name: grafana-test  # Nome específico do Role ao qual este RoleBinding está vinculado
+subjects:
+  - kind: ServiceAccount  # Tipo de entidade de serviço
+    name: grafana-test  # Nome específico da conta de serviço ao qual este RoleBinding concede permissões
+    namespace: default  # Namespace ao qual a conta de serviço pertence
+
+---
+# Definição do Pod para Grafana Test
+apiVersion: v1
+kind: Pod
+metadata:
+  name: grafana-test  # Nome do Pod
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+  annotations:
+    "helm.sh/hook": test-success  # Anotação indicando o sucesso do teste associado ao hook Helm
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"  # Política de exclusão do hook Helm
+  namespace: default  # Namespace padrão para o Pod
+spec:
+  serviceAccountName: grafana-test  # Nome da conta de serviço associada ao Pod
+  containers:
+    - name: grafana-test  # Nome do contêiner
+      image: "bats/bats:v1.4.1"  # Imagem do contêiner a ser usada
+      imagePullPolicy: "IfNotPresent"  # Política de puxar a imagem (somente se não estiver presente localmente)
+      command: ["/opt/bats/bin/bats", "-t", "/tests/run.sh"]  # Comando a ser executado no contêiner durante a inicialização
+      volumeMounts:
+        - mountPath: /tests  # Caminho de montagem no contêiner
+          name: tests  # Nome do volume (ConfigMap) a ser montado no contêiner
+          readOnly: true  # Montagem como somente leitura
+  volumes:
+    - name: tests  # Nome do volume (ConfigMap)
+      configMap:
+        name: grafana-test  # Nome específico do ConfigMap a ser montado no volume
+  restartPolicy: Never  # Política de reinicialização do Pod (Never significa que o Pod não será reiniciado automaticamente)
+
+---
+# Definição da conta de serviço para Grafana
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+  name: grafana  # Nome da conta de serviço
+  namespace: default  # Namespace padrão para a conta de serviço
+
+---
+# Definição do recurso Secret para Grafana
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana  # Nome do recurso Secret
+  namespace: default  # Namespace padrão para o Secret
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+type: Opaque  # Tipo de Secret como "Opaque" (genérico, sem interpretação específica)
+data:
+  admin-user: "YWRtaW4="  # Dados codificados em base64 para o usuário admin
+  admin-password: "elJSYW15bFVHT2ZrRzNSeW1aaUdNeHljYkNJdWFhMHBQMFdlVFVmNA=="  # Dados codificados em base64 para a senha do admin
+  ldap-toml: ""  # Dados vazios para o LDAP, conforme necessário
+
+---
+  # Definição do recurso ConfigMap para Grafana
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: grafana  # Nome do recurso ConfigMap
+    namespace: default  # Namespace padrão para o ConfigMap
+    labels:
+      helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+      app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+      app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+      app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+      app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+  data:
+    grafana.ini: |
+      [analytics]
+      check_for_updates = true
+      [grafana_net]
+      url = https://grafana.net
+      [log]
+      mode = console
+      [paths]
+       # Caminho para dados do Grafana
+      data = /var/lib/grafana/ 
+      # Caminho para logs do Grafana
+      logs = /var/log/grafana  
+      # Caminho para plugins do Grafana
+      plugins = /var/lib/grafana/plugins
+      # Caminho para configurações de provisionamento do Grafana
+      provisioning = /etc/grafana/provisioning  
+      [server]
+      domain = '' 
+      # Domínio do servidor Grafana (vazio neste caso)
+---
+# Definição do recurso ClusterRole para Grafana
+kind: ClusterRole  # Tipo de recurso é um ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1  # Versão da API RBAC
+metadata:
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+  name: grafana-clusterrole  # Nome do ClusterRole
+rules: []  # Lista vazia de regras, indicando que não há permissões específicas concedidas
+
+---
+# Definição do recurso ClusterRoleBinding para Grafana
+kind: ClusterRoleBinding  # Tipo de recurso é um ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1  # Versão da API RBAC
+metadata:
+  name: grafana-clusterrolebinding  # Nome do ClusterRoleBinding
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+subjects:
+  - kind: ServiceAccount  # Tipo do objeto ao qual a função (ClusterRole) será vinculada
+    name: grafana  # Nome do ServiceAccount
+    namespace: default  # Namespace do ServiceAccount
+roleRef:
+  kind: ClusterRole  # Tipo do objeto ao qual estamos vinculando o ServiceAccount
+  name: grafana-clusterrole  # Nome do ClusterRole
+  apiGroup: rbac.authorization.k8s.io  # Grupo da API onde o ClusterRole está definido
+
+---
+# Definição do recurso Role para Grafana
+apiVersion: rbac.authorization.k8s.io/v1  # Versão da API RBAC
+kind: Role  # Tipo de recurso é um Role
+metadata:
+  name: grafana  # Nome do Role
+  namespace: default  # Namespace no qual este Role está definido
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+rules:
+  - apiGroups: ['extensions']  # Grupo da API dos recursos aos quais estamos concedendo permissões
+    resources: ['podsecuritypolicies']  # Recursos específicos aos quais estamos concedendo permissões
+    verbs: ['use']  # Ação que está sendo permitida para o recurso
+    resourceNames: [grafana]  # Nome específico do recurso ao qual estamos concedendo permissões
+
+---
+# Definição do recurso RoleBinding para Grafana
+apiVersion: rbac.authorization.k8s.io/v1  # Versão da API RBAC
+kind: RoleBinding  # Tipo de recurso é um RoleBinding
+metadata:
+  name: grafana  # Nome do RoleBinding
+  namespace: default  # Namespace no qual este RoleBinding está definido
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io  # Grupo da API do Role ao qual estamos vinculando permissões
+  kind: Role  # Tipo de recurso ao qual estamos vinculando permissões (Role neste caso)
+  name: grafana  # Nome do Role ao qual estamos vinculando permissões
+subjects:
+  - kind: ServiceAccount  # Tipo de entidade à qual estamos vinculando permissões (ServiceAccount neste caso)
+    name: grafana  # Nome da ServiceAccount ao qual estamos vinculando permissões
+    namespace: default  # Namespace da ServiceAccount ao qual estamos vinculando permissões
+
+---
+# Definição do recurso Service para Grafana
+apiVersion: v1  # Versão da API do recurso Service
+kind: Service  # Tipo de recurso é um Service
+metadata:
+  name: grafana  # Nome do Service
+  namespace: default  # Namespace no qual este Service está definido
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+spec:
+  type: LoadBalancer  # Tipo de serviço LoadBalancer para expor o serviço externamente
+  ports:
+    - name: service  # Nome da porta
+      port: 80  # Porta exposta no serviço
+      protocol: TCP  # Protocolo utilizado (TCP neste caso)
+      targetPort: 3000  # Porta para a qual o tráfego será direcionado nos pods de backend
+  selector:
+    app.kubernetes.io/name: grafana  # Seletor para determinar quais pods fazem parte deste serviço
+    app.kubernetes.io/instance: grafana  # Seletor para determinar quais pods fazem parte deste serviço
+
+---
+# Definição do recurso Deployment para Grafana
+apiVersion: apps/v1  # Versão da API do recurso Deployment
+kind: Deployment  # Tipo de recurso é um Deployment
+metadata:
+  name: grafana  # Nome do Deployment
+  namespace: default  # Namespace no qual este Deployment está definido
+  labels:
+    helm.sh/chart: grafana-6.42.3  # Rótulo do Chart Helm
+    app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo como "grafana"
+    app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo como "grafana"
+    app.kubernetes.io/version: "9.2.0"  # Rótulo indicando a versão do aplicativo como "9.2.0"
+    app.kubernetes.io/managed-by: Helm  # Rótulo indicando que o recurso é gerenciado pelo Helm
+spec:
+  replicas: 1  # Número desejado de réplicas dos pods
+  revisionHistoryLimit: 10  # Número de revisões a serem mantidas para o histórico de revisões
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grafana  # Seletor para determinar quais pods fazem parte deste Deployment
+      app.kubernetes.io/instance: grafana  # Seletor para determinar quais pods fazem parte deste Deployment
+  strategy:
+    type: RollingUpdate  # Tipo de estratégia de atualização (RollingUpdate neste caso)
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: grafana  # Rótulo indicando o nome do aplicativo nos pods
+        app.kubernetes.io/instance: grafana  # Rótulo indicando a instância do aplicativo nos pods
+      annotations:  # Anotações aplicadas aos pods
+        checksum/config: a8c8847238aeaa0d1355146b6c8e756ecb7e07efbbb41ac75aa2161d64b187c4
+        checksum/dashboards-json-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/sc-dashboard-provider-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/secret: 15caba8a376b523cef17172a7980899691cf78da1b509babef4d6f289612feb3
+    spec:
+      serviceAccountName: grafana  # Nome da Service Account a ser usada pelos pods
+      automountServiceAccountToken: true  # Habilita a montagem automática do token da Service Account
+      securityContext:  # Contexto de segurança aplicado aos pods
+        fsGroup: 472  # ID do grupo de arquivos do FS para o qual o volume será montado
+        runAsGroup: 472  # ID do grupo de execução para o processo do contêiner
+        runAsUser: 472  # ID do usuário para o processo do contêiner
+      enableServiceLinks: true  # Ativa links de serviço nos pods
+      containers:  # Lista de contêineres nos pods
+        - name: grafana  # Nome do contêiner
+          image: "grafana/grafana:9.2.0"  # Imagem do contêiner
+          imagePullPolicy: IfNotPresent  # Política para puxar a imagem (SeNãoPresente neste caso)
+          volumeMounts:  # Montagem de volumes no contêiner
+            - name: config  # Nome do volume
+              mountPath: "/etc/grafana/grafana.ini"  # Caminho de montagem no contêiner
+              subPath: grafana.ini  # Subcaminho no volume
+            - name: storage  # Nome do volume
+              mountPath: "/var/lib/grafana"  # Caminho de montagem no contêiner
+          ports:  # Lista de portas expostas pelo contêiner
+            - name: grafana  # Nome da porta
+              containerPort: 3000  # Número da porta do contêiner
+              protocol: TCP  # Protocolo utilizado (TCP neste caso)
+          env:  # Lista de variáveis de ambiente
+            - name: GF_SECURITY_ADMIN_USER  # Nome da variável de ambiente
+              valueFrom:  # Especificação de recurso de referência
+                secretKeyRef:
+                  name: grafana  # Nome do Secret
+                  key: admin-user  # Chave no Secret
+            - name: GF_SECURITY_ADMIN_PASSWORD  # Nome da variável de ambiente
+              valueFrom:  # Especificação de recurso de referência
+                secretKeyRef:
+                  name: grafana  # Nome do Secret
+                  key: admin-password  # Chave no Secret
+            - name: GF_PATHS_DATA  # Nome da variável de ambiente
+              value: /var/lib/grafana/  # Valor da variável
+            - name: GF_PATHS_LOGS  # Nome da variável de ambiente
+              value: /var/log/grafana  # Valor da variável
+            - name: GF_PATHS_PLUGINS  # Nome da variável de ambiente
+              value: /var/lib/grafana/plugins  # Valor da variável
+            - name: GF_PATHS_PROVISIONING  # Nome da variável de ambiente
+              value: /etc/grafana/provisioning  # Valor da variável
+          livenessProbe:  # Sonda de verificação de status do pod
+            failureThreshold: 10  # Número de falhas antes de marcar o pod como não saudável
+            httpGet:  # Verificação HTTP
+              path: /api/health  # Caminho para verificar a saúde do aplicativo
+              port: 3000  # Número da porta
+            initialDelaySeconds: 60  # Tempo inicial para esperar antes de iniciar as sondas
+            timeoutSeconds: 30  # Tempo limite para a sonda
+          readinessProbe:  # Sonda de verificação de prontidão do pod
+            httpGet:  # Verificação HTTP
+              path: /api/health  # Caminho para verificar a prontidão do aplicativo
+              port: 3000  # Número da porta
+      volumes:  # Lista de volumes a serem montados nos pods
+        - name: config  # Nome do volume
+          configMap:  # Volume de configMap
+            name: grafana  # Nome do ConfigMap
+        - name: storage  # Nome do volume
+          emptyDir: {}  # Volume vazio para armazenamento temporário
